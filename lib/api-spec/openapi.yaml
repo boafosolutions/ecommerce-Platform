@@ -1,0 +1,607 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: storefront
+    description: Customer storefront operations
+  - name: orders
+    description: Customer order operations
+  - name: admin
+    description: Protected store administration operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /products:
+    get:
+      operationId: listProducts
+      tags: [storefront]
+      summary: List products
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: featured
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [storefront]
+      summary: Get product details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          description: Product not found
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [storefront]
+      summary: List product categories
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+  /storefront/summary:
+    get:
+      operationId: getStorefrontSummary
+      tags: [storefront]
+      summary: Get storefront highlights
+      responses:
+        "200":
+          description: Storefront summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorefrontSummary"
+  /promotions/active:
+    get:
+      operationId: getActivePromotion
+      tags: [storefront]
+      summary: Get the active storefront promotion
+      responses:
+        "200":
+          description: Active promotion, or null when none is active
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Promotion"
+                  - type: "null"
+  /orders:
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Create a customer order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderInput"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: Invalid order
+  /admin/summary:
+    get:
+      operationId: getAdminSummary
+      tags: [admin]
+      summary: Get admin dashboard summary
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Admin summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSummary"
+  /storage/uploads/request-url:
+    post:
+      operationId: requestStorageUploadUrl
+      tags: [admin]
+      summary: Request a product image upload URL
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestUploadUrlBody"
+      responses:
+        "200":
+          description: Presigned upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestUploadUrlResponse"
+        "400":
+          description: Invalid upload metadata
+        "401":
+          description: Authentication required
+  /storage/objects/{path}:
+    get:
+      operationId: getStorageObject
+      tags: [storefront]
+      summary: Serve an uploaded object
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stored object
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Object not found
+  /admin/products:
+    get:
+      operationId: listAdminProducts
+      tags: [admin]
+      summary: List products for administration
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Admin products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminProduct"
+    post:
+      operationId: createAdminProduct
+      tags: [admin]
+      summary: Create a product
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminProductInput"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminProduct"
+        "400":
+          description: Invalid product
+        "409":
+          description: Product slug already exists
+  /admin/products/{id}:
+    patch:
+      operationId: updateAdminProduct
+      tags: [admin]
+      summary: Update a product
+      security:
+        - clerkSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminProductInput"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminProduct"
+        "404":
+          description: Product not found
+        "409":
+          description: Product slug already exists
+    delete:
+      operationId: deleteAdminProduct
+      tags: [admin]
+      summary: Delete a product
+      security:
+        - clerkSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "204":
+          description: Product deleted
+        "404":
+          description: Product not found
+        "409":
+          description: Product is referenced by an order
+  /admin/promotions:
+    get:
+      operationId: listAdminPromotions
+      tags: [admin]
+      summary: List promotions
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Promotions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminPromotion"
+    post:
+      operationId: createAdminPromotion
+      tags: [admin]
+      summary: Create a promotion
+      security:
+        - clerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminPromotionInput"
+      responses:
+        "201":
+          description: Promotion created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPromotion"
+  /admin/promotions/{id}:
+    patch:
+      operationId: updateAdminPromotion
+      tags: [admin]
+      summary: Update a promotion
+      security:
+        - clerkSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminPromotionInput"
+      responses:
+        "200":
+          description: Promotion updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPromotion"
+        "404":
+          description: Promotion not found
+    delete:
+      operationId: deleteAdminPromotion
+      tags: [admin]
+      summary: Delete a promotion
+      security:
+        - clerkSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "204":
+          description: Promotion deleted
+        "404":
+          description: Promotion not found
+  /admin/orders:
+    get:
+      operationId: listAdminOrders
+      tags: [admin]
+      summary: List customer orders
+      security:
+        - clerkSession: []
+      responses:
+        "200":
+          description: Admin orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminOrder"
+  /admin/orders/{id}/status:
+    patch:
+      operationId: updateAdminOrderStatus
+      tags: [admin]
+      summary: Update an order status
+      security:
+        - clerkSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminOrderStatusInput"
+      responses:
+        "200":
+          description: Order updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOrder"
+        "404":
+          description: Order not found
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    Product:
+      type: object
+      required: [id, name, slug, description, price, category, imageUrl, rating, reviewCount, stockQuantity, inStock, featured]
+      properties:
+        id: { type: number }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        price: { type: number }
+        compareAtPrice: { type: ["number", "null"] }
+        category: { type: string }
+        imageUrl: { type: string }
+        rating: { type: number }
+        reviewCount: { type: number }
+        stockQuantity: { type: number }
+        inStock: { type: boolean }
+        featured: { type: boolean }
+        badge: { type: ["string", "null"] }
+    Category:
+      type: object
+      required: [name, slug, productCount]
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        productCount: { type: number }
+    StorefrontSummary:
+      type: object
+      required: [featuredProducts, totalProducts, categoryCount]
+      properties:
+        featuredProducts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        totalProducts: { type: number }
+        categoryCount: { type: number }
+    Promotion:
+      type: object
+      required: [id, title, message, ctaLabel, ctaUrl]
+      properties:
+        id: { type: number }
+        title: { type: string }
+        message: { type: string }
+        discountText: { type: ["string", "null"] }
+        code: { type: ["string", "null"] }
+        ctaLabel: { type: string }
+        ctaUrl: { type: string }
+    AdminPromotionInput:
+      type: object
+      required: [title, message, ctaLabel, ctaUrl, active]
+      properties:
+        title: { type: string, minLength: 1 }
+        message: { type: string, minLength: 1 }
+        discountText: { type: ["string", "null"] }
+        code: { type: ["string", "null"] }
+        ctaLabel: { type: string, minLength: 1 }
+        ctaUrl: { type: string, minLength: 1 }
+        active: { type: boolean }
+        startsAt: { type: ["string", "null"], format: date-time }
+        endsAt: { type: ["string", "null"], format: date-time }
+    AdminPromotion:
+      allOf:
+        - $ref: "#/components/schemas/AdminPromotionInput"
+        - type: object
+          required: [id, startsAt, endsAt, createdAt]
+          properties:
+            id: { type: number }
+            startsAt: { type: ["string", "null"], format: date-time }
+            endsAt: { type: ["string", "null"], format: date-time }
+            createdAt: { type: string, format: date-time }
+    OrderItemInput:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId: { type: number }
+        quantity: { type: number, minimum: 1 }
+    OrderInput:
+      type: object
+      required: [customerName, email, shippingAddress, items]
+      properties:
+        customerName: { type: string, minLength: 1 }
+        email: { type: string }
+        shippingAddress: { type: string, minLength: 1 }
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/OrderItemInput"
+    Order:
+      type: object
+      required: [id, status, total, createdAt]
+      properties:
+        id: { type: number }
+        status: { type: string }
+        total: { type: number }
+        createdAt: { type: string }
+    AdminProductInput:
+      type: object
+      required: [name, slug, description, price, category, imageUrl, stockQuantity, inStock, featured]
+      properties:
+        name: { type: string, minLength: 1 }
+        slug: { type: string, minLength: 1 }
+        description: { type: string }
+        price: { type: number, minimum: 0 }
+        compareAtPrice: { type: ["number", "null"] }
+        category: { type: string, minLength: 1 }
+        imageUrl: { type: string, minLength: 1 }
+        rating: { type: number, minimum: 0, maximum: 5 }
+        reviewCount: { type: number, minimum: 0 }
+        stockQuantity: { type: number, minimum: 0 }
+        inStock: { type: boolean }
+        featured: { type: boolean }
+        badge: { type: ["string", "null"] }
+    RequestUploadUrlBody:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string, minLength: 1 }
+        size: { type: number, minimum: 1, maximum: 10485760 }
+        contentType: { type: string, minLength: 1, pattern: "^image/" }
+    RequestUploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath, metadata]
+      properties:
+        uploadURL: { type: string, minLength: 1 }
+        objectPath: { type: string, minLength: 1 }
+        metadata:
+          type: object
+          required: [name, size, contentType]
+          properties:
+            name: { type: string }
+            size: { type: number }
+            contentType: { type: string }
+    AdminProduct:
+      allOf:
+        - $ref: "#/components/schemas/Product"
+    AdminOrderItem:
+      type: object
+      required: [id, productId, productName, quantity, unitPrice]
+      properties:
+        id: { type: number }
+        productId: { type: number }
+        productName: { type: string }
+        quantity: { type: number }
+        unitPrice: { type: number }
+    AdminOrder:
+      type: object
+      required: [id, customerName, email, shippingAddress, status, total, createdAt, items]
+      properties:
+        id: { type: number }
+        customerName: { type: string }
+        email: { type: string }
+        shippingAddress: { type: string }
+        status: { type: string }
+        total: { type: number }
+        createdAt: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminOrderItem"
+    AdminOrderStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, confirmed, processing, shipped, delivered, cancelled]
+    AdminSummary:
+      type: object
+      required: [totalProducts, inStockProducts, lowStockProducts, pendingOrders, revenue, recentOrders]
+      properties:
+        totalProducts: { type: number }
+        inStockProducts: { type: number }
+        lowStockProducts: { type: number }
+        pendingOrders: { type: number }
+        revenue: { type: number }
+        recentOrders:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminOrder"
+  securitySchemes:
+    clerkSession:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
